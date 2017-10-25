@@ -1,0 +1,31 @@
+# Simple tests to verify things work against a live REST service that returns JSON.. Github is a natural one
+---
+- config:
+  - testset: "Simple endpoints' test"
+- test:
+  - name: "Basic smoketest of the /metadata endpoint."
+  - headers: {accept: 'application/json'}
+  - url: "/metadata"
+  - expected_status: [200]
+  - validators: # operator is applied as: <actual> <operator> <expected>
+     - compare: {header: "content-type", comparator: contains,    expected: 'application/json'}
+     - compare: {raw_body: "",           comparator: "regex",     expected: '.*'}
+     - extract_test: {jsonpath_mini: "app_name",        test: "exists"}
+     - extract_test: {jsonpath_mini: "description",     test: "exists"}
+     - extract_test: {jsonpath_mini: "last_commit_sha", test: "exists"}
+     - extract_test: {jsonpath_mini: "version",         test: "exists"}
+     - extract_test: {jsonpath_mini: "does_not_exist",  test: "not_exists"}
+- test:
+  - name: "Basic smoketest of the / endpoint."
+  - url: "/"
+  - expected_status: [200]
+  - validators: # operator is applied as: <actual> <operator> <expected>
+     - compare: {header: "content-type", comparator: contains,    expected: 'text/html'}
+     - compare: {raw_body: "",           comparator: "regex",     expected: 'Hello World!\n'}
+- test:
+  - name: "Basic smoketest of the /health endpoint."
+  - url: "/health"
+  - expected_status: [200]
+  - validators: # operator is applied as: <actual> <operator> <expected>
+     - compare: {header: "content-type", comparator: contains,    expected: 'text/html'}
+     - compare: {raw_body: "",           comparator: "regex",     expected: 'OK\n'}

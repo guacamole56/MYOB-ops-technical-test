@@ -1,0 +1,40 @@
+env:
+  global:
+  - REPO=myob-ops-technical-test
+  - USER=guacamole56
+  - secure: gjItYzCxjVgJBL1ujaTcr/AiwKlD6M/LZUxCslK/fKBFVA83wyMEL5xsc9B8SzKSaWrrJRmgi1Qw/QCbESZ7d0MQaLZiIX5YvfJTphhzh6D2Pk+Re++2luVqOyI9PYeKhigJWWMuWPXDSc2mlJqIbZRxlEYZNxDgK5Lzq3uf9va/0rqQHpLdtv2Mma73/imj1wHTx30rkWsDIQ+04RFAHzs5fMO5R5b2E7TtXVfo3YayUsaQTUwRoXUQuhjFAIAVl2y8PUUDLJd2SXpPrlTcaImeJbnRYR0Gj2RxJS/ujwIvMhIr2QAe5IW3i8bbO352hNb1CbgroBqpJx/kBw6Vk0uD2o3mVV2zD+1KFRjYoewE9Cwt33J830K+NOzLtvugR4CuXLnn2EQ18Rhho+Qrbym4pQ5p9823oKBT+WoZ3ab5a/Atg1kl6WdYbaT+MxvDjXxbGYNVsaCKbyiRLaJEYpXEM4rJU0e4OmgakObTlQPYtWBHl/Beh0LqIHI98pP191D9EEui8I31jIpBEwaOH88SyfPwYU68qbPEfKGm3ZupPfdY5xw5CvUBmju9mx76x/2Qj/VHJF+CBU/BAxfGw3AjnJf1TE0V1sFZReaDls9Zx6VYeFCpLWOSr2kU+AgnjBjAmfGbrrEVBQCw4cEGfg3iWBgMFks8FKkcDn53o7g=
+  - secure: jSfzk1dtZshfDhdNMO2v82tDhFlOILWJTcYCAKjNM0R6sV43eSis7XgbTkxkqbz8yP/c8eG0W5arnq+PFvu9NABucUjIbk79Cx0tHBSI7afjtgo5R3K94IzeiDAf03X1mXNx9ZEirPRv8Sfm2rn5tddoQDNyX1ZqCxAgk191LD4Ed2TSE1+7S2qQkWrr4TSeya3vATwiZr/ZzjJIwU0ysa6I4a3oOs+ODDysOrzIDUwCqIDWkE9NSd4spjmuD3/b56kQZj5fInPjSENfhjm6mHb62zQtGmSGFMSQx7SOT+CwRgvsVjeQ3MvNos5nIKLwLRV03Pq5RYxTGoZQGKcZAVsHhVbqbZKDFR+d4noR9LJDUpYk32NMx9zealtJRZwqhtCVzrm7DjrvSCJ/hPcgapCFSMaJZedwz4YGlAh9Hl5MaW+5eBclT/mluNXzjEEb1O3YG206fg2B8p3CQdVUS/mBZGqzqsgxVXEtOSZ9fOrrTSyiZ2k38Y1eC1ZtSdyXTB82VQ4aJcl2LKyYb+f0mcpP0yj+yJPt2SD9ezgREZoLWsDdMXBrxa21qG0tGeUXdSfmTZAkQ98jzGqCUXq4X41ffy3vWkVavFssLQsQyAGZrK4JWK2ab95Nw1bJfxNDgffkT3MEExSNQtbWgg+qdlqXXmujH0w8u1sUTvxNy+Q=
+
+language: python
+
+python:
+- 3.6
+
+services:
+- docker
+
+install:
+- pip install -r requirements.txt
+- pip install .
+
+script:
+# Regular unit tests.
+- nosetests
+# Generate git revision id.
+- git describe --all --long | cut -d "-" -f 3 > version.txt
+- export TAG=`if [[ $TRAVIS_PULL_REQUEST == "false" ]] && [[ $TRAVIS_BRANCH == "master"
+  ]]; then echo "latest"; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi`
+- export VERSION=`python -c "from myob_ops_technical_test.config import VERSION; print(VERSION)"`
+- export COMMIT=`cat version.txt`
+- docker build -t $USER/$REPO:v$VERSION-$COMMIT -f docker/Dockerfile .
+# Run smoke tests in newly built contaner using 
+- docker run -d -p 5000:5000 $USER/$REPO:v$VERSION-$COMMIT
+- export CONTAINER_ID=`docker ps | tail -1 | cut -d' ' -f1`
+- sleep 3
+- docker exec -it $CONTAINER_ID pyresttest http://localhost:5000 docker/tests/web_smoketest.yaml
+
+after_success:
+# Upload to DockerHub.
+- docker tag $USER/$REPO:v$VERSION-$COMMIT $USER/$REPO:$TAG
+- docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- docker push $USER/$REPO
