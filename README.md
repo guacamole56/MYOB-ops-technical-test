@@ -106,3 +106,5 @@ These are multiple areas in which the application described here can be improved
 - At the moment the web application logs are lost once the container is
   deleted. Ideally these should be saved or processed and their event sent,
   together with system metrics, to some centralized logging system for later analysis, such as [datadog](https://www.datadoghq.com/) or similar.
+- Imrove and optimize the Docker image building process and its layers to make resulting
+  images thinner and faster to load.
